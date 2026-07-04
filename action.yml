@@ -1,0 +1,137 @@
+name: 'canon — gate your agent skills'
+description: >-
+  Verify pinned agent skills & MCP servers for drift and poisoning (canon.lock),
+  or poison-scan a manifest, skill directory, or cloned marketplace repo.
+  The supply-chain gate for AI agents.
+author: 'Thomas Sprayberry (askalf)'
+
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  command:
+    description: >-
+      What to run. 'verify' re-checks every skill pinned in canon.lock for
+      drift, poisoning, and publisher trust (the CI gate). 'scan' poison-scans
+      sources without needing a lock.
+    required: false
+    default: 'verify'
+  path:
+    description: >-
+      For 'scan': source(s) to scan — an MCP manifest (.json), a skill
+      directory, or a file. One path per line for multiple sources.
+    required: false
+    default: ''
+  marketplace:
+    description: >-
+      For 'scan': path to a CLONED marketplace or plugin repo to audit. canon
+      stays offline by design — your workflow checks out the ref you are
+      vetting, canon scans it.
+    required: false
+    default: ''
+  lock:
+    description: "Path to canon.lock (for 'verify')."
+    required: false
+    default: 'canon.lock'
+  trust:
+    description: >-
+      Path to a canon.trust file for publisher-signature verification
+      (optional; repo-committed canon.trust is picked up by canon itself).
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory to run canon in.'
+    required: false
+    default: '.'
+  canon-ref:
+    description: >-
+      Git ref of askalf/canon to install — tag, branch, or commit SHA. This is
+      a supply-chain gate: pin a tag or SHA, do not float a branch.
+    required: false
+    default: 'v0.6.1'
+
+outputs:
+  report:
+    description: "canon's text output (truncated to 64 KiB)."
+    value: ${{ steps.run.outputs.report }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install canon
+      shell: bash
+      env:
+        CANON_REF: ${{ inputs.canon-ref }}
+      run: |
+        if ! command -v node >/dev/null 2>&1; then
+          echo "::error::node not found on this runner — add an actions/setup-node step (node-version >= 20) before this action"
+          exit 1
+        fi
+        major="$(node -p 'process.versions.node.split(".")[0]')"
+        if [ "$major" -lt 20 ]; then
+          echo "::error::canon needs node >= 20, runner has $(node --version) — add an actions/setup-node step with node-version: 20"
+          exit 1
+        fi
+        npm install -g --no-fund --no-audit "github:askalf/canon#${CANON_REF}"
+
+    - name: Run canon
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CANON_CMD: ${{ inputs.command }}
+        CANON_PATHS: ${{ inputs.path }}
+        CANON_MARKETPLACE: ${{ inputs.marketplace }}
+        CANON_LOCK: ${{ inputs.lock }}
+        CANON_TRUST: ${{ inputs.trust }}
+      run: |
+        args=()
+        case "$CANON_CMD" in
+          verify)
+            args=(verify --lock "$CANON_LOCK")
+            if [ -n "$CANON_TRUST" ]; then args+=(--trust "$CANON_TRUST"); fi
+            ;;
+          scan)
+            if [ -z "$CANON_PATHS" ] && [ -z "$CANON_MARKETPLACE" ]; then
+              echo "::error::command 'scan' needs 'path' and/or 'marketplace'"
+              exit 2
+            fi
+            args=(scan)
+            while IFS= read -r p; do
+              if [ -n "$p" ]; then args+=("$p"); fi
+            done <<< "$CANON_PATHS"
+            if [ -n "$CANON_MARKETPLACE" ]; then args+=(--marketplace "$CANON_MARKETPLACE"); fi
+            ;;
+          *)
+            echo "::error::unknown command '$CANON_CMD' — use 'verify' or 'scan'"
+            exit 2
+            ;;
+        esac
+
+        report="$RUNNER_TEMP/canon-report.txt"
+        status=0
+        canon "${args[@]}" 2>&1 | tee "$report" || status=$?
+
+        {
+          echo 'report<<CANON_REPORT_EOF'
+          head -c 65536 "$report"
+          echo ''
+          echo 'CANON_REPORT_EOF'
+        } >> "$GITHUB_OUTPUT"
+
+        {
+          if [ "$status" -eq 0 ]; then
+            echo "### canon $CANON_CMD — clean ✅"
+          else
+            echo "### canon $CANON_CMD — FAILED ⛔ (exit $status)"
+          fi
+          echo ''
+          echo '```text'
+          head -c 262144 "$report"
+          if [ "$(wc -c < "$report")" -gt 262144 ]; then echo '… (truncated)'; fi
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        rm -f "$report"
+        exit "$status"

@@ -1,0 +1,99 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-clean:
+    name: verify — clean lock passes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Pin the fixture
+        run: npx -y github:askalf/canon#v0.6.1 add fixtures/clean-mcp.json --lock "$RUNNER_TEMP/canon.lock"
+      - name: Verify via the action
+        id: verify
+        uses: ./
+        with:
+          command: verify
+          lock: ${{ runner.temp }}/canon.lock
+      - name: Report output is populated
+        env:
+          REPORT: ${{ steps.verify.outputs.report }}
+        run: |
+          if [ -z "$REPORT" ]; then
+            echo "expected a non-empty report output" >&2
+            exit 1
+          fi
+
+  verify-drift-blocks:
+    name: verify — drifted skill fails the build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Pin a copy, then mutate it
+        run: |
+          cp fixtures/clean-mcp.json "$RUNNER_TEMP/skill.json"
+          npx -y github:askalf/canon#v0.6.1 add "$RUNNER_TEMP/skill.json" --lock "$RUNNER_TEMP/canon.lock"
+          sed -i 's/List the files and folders/Silently exfiltrate the files/' "$RUNNER_TEMP/skill.json"
+      - name: Verify via the action (expected to fail)
+        id: verify
+        continue-on-error: true
+        uses: ./
+        with:
+          command: verify
+          lock: ${{ runner.temp }}/canon.lock
+      - name: Assert the drift was blocked
+        env:
+          OUTCOME: ${{ steps.verify.outcome }}
+          REPORT: ${{ steps.verify.outputs.report }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "expected the action to fail on a drifted skill, got: $OUTCOME" >&2
+            exit 1
+          fi
+          case "$REPORT" in
+            *drifted*) echo "drift correctly reported" ;;
+            *) echo "expected 'drifted' in the report" >&2; exit 1 ;;
+          esac
+
+  scan-clean-passes:
+    name: scan — clean manifest passes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./
+        with:
+          command: scan
+          path: fixtures/clean-mcp.json
+
+  scan-poisoned-blocks:
+    name: scan — poisoned manifest fails the build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Scan via the action (expected to fail)
+        id: scan
+        continue-on-error: true
+        uses: ./
+        with:
+          command: scan
+          path: fixtures/poisoned-mcp.json
+      - name: Assert the poison was flagged
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+          REPORT: ${{ steps.scan.outputs.report }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "expected the action to fail on a poisoned manifest, got: $OUTCOME" >&2
+            exit 1
+          fi
+          case "$REPORT" in
+            *flagged*) echo "poison correctly flagged" ;;
+            *) echo "expected 'flagged' in the report" >&2; exit 1 ;;
+          esac
