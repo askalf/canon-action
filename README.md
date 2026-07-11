@@ -1,4 +1,4 @@
-# canon-action
+# truecopy-action
 
 > Gate every agent skill & MCP server change in CI — one YAML block. The GitHub Action for **[truecopy](https://github.com/askalf/truecopy)**, the supply-chain gate for AI agents. Part of **[Own Your Stack](https://github.com/askalf)**.
 
@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: askalf/canon-action@v1
+      - uses: askalf/truecopy-action@v1
 ```
 
 Exit 1 — a failed check on the PR — if any pinned skill **drifted** (bytes changed since you vetted it), **turned poisonous** (same bytes, newer detection), or is **signed by a key you don't trust**. Every failure names the skill and the changed tools/files, on the job log and the run's summary page.
@@ -28,7 +28,7 @@ Exit 1 — a failed check on the PR — if any pinned skill **drifted** (bytes c
 ## Poison-scan without a lock
 
 ```yaml
-- uses: askalf/canon-action@v1
+- uses: askalf/truecopy-action@v1
   with:
     command: scan
     path: ./mcp-server.json     # an MCP manifest, a skill directory, or a file
@@ -44,7 +44,7 @@ truecopy audited the full official Claude Code plugin marketplace plus nine comm
     repository: some-org/their-marketplace
     ref: 3f2a91c   # the exact SHA you are vetting
     path: vendor-marketplace
-- uses: askalf/canon-action@v1
+- uses: askalf/truecopy-action@v1
   with:
     command: scan
     marketplace: vendor-marketplace
@@ -62,7 +62,7 @@ truecopy stays offline by design: your workflow fetches the clone, truecopy scan
 | `lock` | `truecopy.lock` | path to the lockfile |
 | `trust` | — | a `truecopy.trust` file for publisher-signature verification |
 | `working-directory` | `.` | where to run truecopy |
-| `truecopy-ref` | `v0.6.1` | git ref of `askalf/truecopy` to install — **pin a tag or SHA, don't float a branch** |
+| `truecopy-ref` | `v0.8.0` | git ref of `askalf/truecopy` to install — **pin a tag or SHA, don't float a branch** |
 
 ## Outputs
 
@@ -75,7 +75,7 @@ truecopy stays offline by design: your workflow fetches the clone, truecopy scan
 This is a supply-chain gate, so it practices what it gates:
 
 - **Zero third-party action dependencies.** Composite action, plain `bash` steps — it installs exactly one thing: truecopy, at the ref you pin via `truecopy-ref`.
-- **Pin this action too.** `askalf/canon-action@v1` is convenient; `askalf/canon-action@<full-sha>` is airtight. Same advice we'd give about anyone's action.
+- **Pin this action too.** `askalf/truecopy-action@v1` is convenient; `askalf/truecopy-action@<full-sha>` is airtight. Same advice we'd give about anyone's action. (The old `askalf/canon-action` name still resolves via GitHub's rename redirect.)
 - **No secrets required.** `verify` needs only the public key material already committed in `truecopy.trust`. (Signing belongs in your own workflow with `CANON_SIGNING_KEY` — see [truecopy's CI docs](https://github.com/askalf/truecopy#in-ci).)
 
 Requires node ≥ 20 on the runner (every current GitHub-hosted image qualifies; on self-hosted, add `actions/setup-node` first).

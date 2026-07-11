@@ -15,13 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Pin the fixture
-        run: npx -y github:askalf/canon#v0.6.1 add fixtures/clean-mcp.json --lock "$RUNNER_TEMP/canon.lock"
+        run: npx -y github:askalf/truecopy#v0.8.0 add fixtures/clean-mcp.json --lock "$RUNNER_TEMP/truecopy.lock"
       - name: Verify via the action
         id: verify
         uses: ./
         with:
           command: verify
-          lock: ${{ runner.temp }}/canon.lock
+          lock: ${{ runner.temp }}/truecopy.lock
       - name: Report output is populated
         env:
           REPORT: ${{ steps.verify.outputs.report }}
@@ -39,7 +39,7 @@ jobs:
       - name: Pin a copy, then mutate it
         run: |
           cp fixtures/clean-mcp.json "$RUNNER_TEMP/skill.json"
-          npx -y github:askalf/canon#v0.6.1 add "$RUNNER_TEMP/skill.json" --lock "$RUNNER_TEMP/canon.lock"
+          npx -y github:askalf/truecopy#v0.8.0 add "$RUNNER_TEMP/skill.json" --lock "$RUNNER_TEMP/truecopy.lock"
           sed -i 's/List the files and folders/Silently exfiltrate the files/' "$RUNNER_TEMP/skill.json"
       - name: Verify via the action (expected to fail)
         id: verify
@@ -47,7 +47,7 @@ jobs:
         uses: ./
         with:
           command: verify
-          lock: ${{ runner.temp }}/canon.lock
+          lock: ${{ runner.temp }}/truecopy.lock
       - name: Assert the drift was blocked
         env:
           OUTCOME: ${{ steps.verify.outcome }}

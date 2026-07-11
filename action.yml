@@ -1,6 +1,6 @@
-name: 'canon — gate your agent skills'
+name: 'truecopy — gate your agent skills'
 description: >-
-  Verify pinned agent skills & MCP servers for drift and poisoning (canon.lock),
+  Verify pinned agent skills & MCP servers for drift and poisoning (truecopy.lock),
   or poison-scan a manifest, skill directory, or cloned marketplace repo.
   The supply-chain gate for AI agents.
 author: 'Thomas Sprayberry (askalf)'
@@ -12,7 +12,7 @@ branding:
 inputs:
   command:
     description: >-
-      What to run. 'verify' re-checks every skill pinned in canon.lock for
+      What to run. 'verify' re-checks every skill pinned in truecopy.lock for
       drift, poisoning, and publisher trust (the CI gate). 'scan' poison-scans
       sources without needing a lock.
     required: false
@@ -25,44 +25,46 @@ inputs:
     default: ''
   marketplace:
     description: >-
-      For 'scan': path to a CLONED marketplace or plugin repo to audit. canon
+      For 'scan': path to a CLONED marketplace or plugin repo to audit. truecopy
       stays offline by design — your workflow checks out the ref you are
-      vetting, canon scans it.
+      vetting, truecopy scans it.
     required: false
     default: ''
   lock:
-    description: "Path to canon.lock (for 'verify')."
+    description: >-
+      Path to truecopy.lock (for 'verify'). An existing canon.lock (pre-rename)
+      is picked up automatically when this is left at the default.
     required: false
-    default: 'canon.lock'
+    default: 'truecopy.lock'
   trust:
     description: >-
-      Path to a canon.trust file for publisher-signature verification
-      (optional; repo-committed canon.trust is picked up by canon itself).
+      Path to a truecopy.trust file for publisher-signature verification
+      (optional; a repo-committed truecopy.trust is picked up by truecopy itself).
     required: false
     default: ''
   working-directory:
-    description: 'Directory to run canon in.'
+    description: 'Directory to run truecopy in.'
     required: false
     default: '.'
-  canon-ref:
+  truecopy-ref:
     description: >-
-      Git ref of askalf/canon to install — tag, branch, or commit SHA. This is
+      Git ref of askalf/truecopy to install — tag, branch, or commit SHA. This is
       a supply-chain gate: pin a tag or SHA, do not float a branch.
     required: false
-    default: 'v0.6.1'
+    default: 'v0.8.0'
 
 outputs:
   report:
-    description: "canon's text output (truncated to 64 KiB)."
+    description: "truecopy's text output (truncated to 64 KiB)."
     value: ${{ steps.run.outputs.report }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Install canon
+    - name: Install truecopy
       shell: bash
       env:
-        CANON_REF: ${{ inputs.canon-ref }}
+        TRUECOPY_REF: ${{ inputs.truecopy-ref }}
       run: |
         if ! command -v node >/dev/null 2>&1; then
           echo "::error::node not found on this runner — add an actions/setup-node step (node-version >= 20) before this action"
@@ -70,61 +72,61 @@ runs:
         fi
         major="$(node -p 'process.versions.node.split(".")[0]')"
         if [ "$major" -lt 20 ]; then
-          echo "::error::canon needs node >= 20, runner has $(node --version) — add an actions/setup-node step with node-version: 20"
+          echo "::error::truecopy needs node >= 20, runner has $(node --version) — add an actions/setup-node step with node-version: 20"
           exit 1
         fi
-        npm install -g --no-fund --no-audit "github:askalf/canon#${CANON_REF}"
+        npm install -g --no-fund --no-audit "github:askalf/truecopy#${TRUECOPY_REF}"
 
-    - name: Run canon
+    - name: Run truecopy
       id: run
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
-        CANON_CMD: ${{ inputs.command }}
-        CANON_PATHS: ${{ inputs.path }}
-        CANON_MARKETPLACE: ${{ inputs.marketplace }}
-        CANON_LOCK: ${{ inputs.lock }}
-        CANON_TRUST: ${{ inputs.trust }}
+        TRUECOPY_CMD: ${{ inputs.command }}
+        TRUECOPY_PATHS: ${{ inputs.path }}
+        TRUECOPY_MARKETPLACE: ${{ inputs.marketplace }}
+        TRUECOPY_LOCK: ${{ inputs.lock }}
+        TRUECOPY_TRUST: ${{ inputs.trust }}
       run: |
         args=()
-        case "$CANON_CMD" in
+        case "$TRUECOPY_CMD" in
           verify)
-            args=(verify --lock "$CANON_LOCK")
-            if [ -n "$CANON_TRUST" ]; then args+=(--trust "$CANON_TRUST"); fi
+            args=(verify --lock "$TRUECOPY_LOCK")
+            if [ -n "$TRUECOPY_TRUST" ]; then args+=(--trust "$TRUECOPY_TRUST"); fi
             ;;
           scan)
-            if [ -z "$CANON_PATHS" ] && [ -z "$CANON_MARKETPLACE" ]; then
+            if [ -z "$TRUECOPY_PATHS" ] && [ -z "$TRUECOPY_MARKETPLACE" ]; then
               echo "::error::command 'scan' needs 'path' and/or 'marketplace'"
               exit 2
             fi
             args=(scan)
             while IFS= read -r p; do
               if [ -n "$p" ]; then args+=("$p"); fi
-            done <<< "$CANON_PATHS"
-            if [ -n "$CANON_MARKETPLACE" ]; then args+=(--marketplace "$CANON_MARKETPLACE"); fi
+            done <<< "$TRUECOPY_PATHS"
+            if [ -n "$TRUECOPY_MARKETPLACE" ]; then args+=(--marketplace "$TRUECOPY_MARKETPLACE"); fi
             ;;
           *)
-            echo "::error::unknown command '$CANON_CMD' — use 'verify' or 'scan'"
+            echo "::error::unknown command '$TRUECOPY_CMD' — use 'verify' or 'scan'"
             exit 2
             ;;
         esac
 
-        report="$RUNNER_TEMP/canon-report.txt"
+        report="$RUNNER_TEMP/truecopy-report.txt"
         status=0
-        canon "${args[@]}" 2>&1 | tee "$report" || status=$?
+        truecopy "${args[@]}" 2>&1 | tee "$report" || status=$?
 
         {
-          echo 'report<<CANON_REPORT_EOF'
+          echo 'report<<TRUECOPY_REPORT_EOF'
           head -c 65536 "$report"
           echo ''
-          echo 'CANON_REPORT_EOF'
+          echo 'TRUECOPY_REPORT_EOF'
         } >> "$GITHUB_OUTPUT"
 
         {
           if [ "$status" -eq 0 ]; then
-            echo "### canon $CANON_CMD — clean ✅"
+            echo "### truecopy $TRUECOPY_CMD — clean ✅"
           else
-            echo "### canon $CANON_CMD — FAILED ⛔ (exit $status)"
+            echo "### truecopy $TRUECOPY_CMD — FAILED ⛔ (exit $status)"
           fi
           echo ''
           echo '```text'
