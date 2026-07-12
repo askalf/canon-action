@@ -61,7 +61,7 @@ truecopy stays offline by design: your workflow fetches the clone, truecopy scan
 | `command` | `verify` | `verify` re-checks every skill pinned in `truecopy.lock` (the CI gate) · `scan` poison-scans sources without a lock |
 | `path` | — | for `scan`: source(s) to scan — one path per line for multiple |
 | `marketplace` | — | for `scan`: a cloned marketplace/plugin repo to audit |
-| `lock` | `truecopy.lock` | path to the lockfile |
+| `lock` | *(auto)* | lockfile path; empty auto-resolves `truecopy.lock`, then `canon.lock` (pre-rename) |
 | `trust` | — | a `truecopy.trust` file for publisher-signature verification |
 | `working-directory` | `.` | where to run truecopy |
 | `truecopy-ref` | `v0.8.0` | git ref of `askalf/truecopy` to install — **pin a tag or SHA, don't float a branch** |
