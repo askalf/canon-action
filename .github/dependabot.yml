@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # This is a composite action with zero third-party action dependencies at
+  # runtime; the only pinned action is actions/checkout in the CI workflow.
+  # Dependabot keeps that SHA fresh so the pin never rots.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"

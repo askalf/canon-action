@@ -32,10 +32,12 @@ inputs:
     default: ''
   lock:
     description: >-
-      Path to truecopy.lock (for 'verify'). An existing canon.lock (pre-rename)
-      is picked up automatically when this is left at the default.
+      Path to the lockfile (for 'verify'). Leave empty to let truecopy resolve it:
+      it prefers truecopy.lock and transparently falls back to an existing
+      canon.lock (pre-rename repos), so a repo pinned before the rename keeps
+      verifying with zero changes. Set this only to point at a non-default path.
     required: false
-    default: 'truecopy.lock'
+    default: ''
   trust:
     description: >-
       Path to a truecopy.trust file for publisher-signature verification
@@ -91,7 +93,8 @@ runs:
         args=()
         case "$TRUECOPY_CMD" in
           verify)
-            args=(verify --lock "$TRUECOPY_LOCK")
+            args=(verify)
+            if [ -n "$TRUECOPY_LOCK" ]; then args+=(--lock "$TRUECOPY_LOCK"); fi
             if [ -n "$TRUECOPY_TRUST" ]; then args+=(--trust "$TRUECOPY_TRUST"); fi
             ;;
           scan)
