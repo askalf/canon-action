@@ -1,8 +1,5 @@
 name: 'truecopy — gate your agent skills'
-description: >-
-  Verify pinned agent skills & MCP servers for drift and poisoning (truecopy.lock),
-  or poison-scan a manifest, skill directory, or cloned marketplace repo.
-  The supply-chain gate for AI agents.
+description: 'Gate agent skills & MCP servers in CI: fail on drift or poisoning, or poison-scan a manifest or marketplace.'
 author: 'Thomas Sprayberry (askalf)'
 
 branding:
