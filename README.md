@@ -1,6 +1,6 @@
 # truecopy-action
 
-[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/askalf/truecopy-action?label=OpenSSF%20Scorecard)](https://scorecard.dev/viewer/?uri=github.com/askalf/truecopy-action)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/askalf/truecopy-action/badge)](https://scorecard.dev/viewer/?uri=github.com/askalf/truecopy-action)
 
 > Gate every agent skill & MCP server change in CI — one YAML block. The GitHub Action for **[truecopy](https://github.com/askalf/truecopy)**, the supply-chain gate for AI agents. Part of **[Own Your Stack](https://github.com/askalf)**.
 
